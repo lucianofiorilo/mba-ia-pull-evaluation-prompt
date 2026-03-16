@@ -1,0 +1,277 @@
+========================================================
+ANÁLISE DO PROBLEMA NO PROMPT "BUG → USER STORY"
+========================================================
+
+Este documento descreve os problemas identificados no prompt atual
+e as melhorias recomendadas para aumentar a qualidade das respostas
+geradas por modelos LLM (ex: GPT-4o).
+
+Objetivo:
+Evitar respostas genéricas e garantir User Stories completas,
+com critérios de aceitação claros, mensuráveis e testáveis.
+
+--------------------------------------------------------
+1. PROBLEMA PRINCIPAL: FEW-SHOT ENSINA RESPOSTA GENÉRICA
+--------------------------------------------------------
+
+O exemplo de bug abaixo aparece no prompt:
+
+Bug:
+"Dashboard mostra contagem errada de usuários ativos.
+Mostra 50 mas só há 42 na lista."
+
+Resposta do exemplo:
+
+"Então o número exibido deve corresponder ao total real
+de usuários ativos"
+
+Problema:
+
+A resposta NÃO menciona os dados do bug.
+
+Valores ignorados:
+- 50 usuários
+- 42 usuários
+- diferença entre dashboard e lista
+
+Isso contradiz a própria regra do prompt:
+
+"Use números exatos do bug nos critérios."
+
+Consequência:
+
+O modelo aprende que é aceitável gerar critérios genéricos,
+ignorando os dados específicos do bug.
+
+Impacto nas métricas de evaluation:
+
+Completeness ↓
+Acceptance Criteria ↓
+Precisão ↓
+
+--------------------------------------------------------
+2. COMPORTAMENTO ESPERADO DO MODELO (FEW-SHOT ANCHORING)
+--------------------------------------------------------
+
+Modelos LLM tendem a copiar a estrutura do exemplo
+mais semelhante.
+
+Quando um bug parecido aparece, o modelo:
+
+1) reconhece o padrão do exemplo
+2) replica a estrutura da resposta
+3) substitui apenas partes mínimas
+
+Isso é chamado de:
+
+FEW-SHOT ANCHORING
+
+Resultado:
+
+Respostas excessivamente genéricas.
+
+--------------------------------------------------------
+3. PROBLEMA NA ESTRUTURA DOS CRITÉRIOS GIVEN-WHEN-THEN
+--------------------------------------------------------
+
+O prompt exige:
+
+Cada critério deve conter:
+Dado
+Quando
+Então
+
+Porém os exemplos fornecidos não seguem
+esse formato corretamente.
+
+Exemplo atual:
+
+- Dado que estou visualizando um produto
+- Quando clico no botão
+- Então o produto deve ser adicionado
+- E devo ver confirmação
+- E contador atualizado
+
+Problema:
+
+Isso não são critérios independentes.
+
+A estrutura correta deveria ser:
+
+- Dado que estou na página do produto
+  Quando clico em "Adicionar ao carrinho"
+  Então o produto ID 1234 deve ser adicionado ao carrinho
+
+- Dado que o produto foi adicionado ao carrinho
+  Quando o carrinho é atualizado
+  Então o contador do carrinho deve aumentar em 1
+
+Benefícios:
+
+• Critérios independentes
+• Critérios testáveis
+• Cenários claros para QA
+
+--------------------------------------------------------
+4. EXEMPLOS ENSINAM A REMOVER DADOS IMPORTANTES
+--------------------------------------------------------
+
+Exemplo atual:
+
+"Então o produto deve ser adicionado ao carrinho"
+
+O correto seria:
+
+"Então o produto ID 1234 deve ser adicionado ao carrinho"
+
+Sem dados concretos o critério não é testável.
+
+Consequência:
+
+Evaluation penaliza:
+
+- Completeness
+- Precision
+- Acceptance Criteria
+
+--------------------------------------------------------
+5. PROBLEMA COM O CHAIN OF THOUGHT
+--------------------------------------------------------
+
+O prompt define um processo de raciocínio:
+
+1. Identificar persona
+2. Identificar ação do usuário
+3. Identificar valor de negócio
+4. Classificar complexidade
+5. Gerar critérios
+
+Porém o prompt também exige:
+
+"A primeira linha da resposta DEVE ser a User Story"
+
+Isso impede o modelo de demonstrar o raciocínio.
+
+Resultado:
+
+O modelo ignora o Chain of Thought.
+
+--------------------------------------------------------
+6. EFEITO NAS MÉTRICAS DE AVALIAÇÃO
+--------------------------------------------------------
+
+Com base nesses problemas, os scores tendem a ficar:
+
+Tone:
+~0.85 (tom profissional, porém genérico)
+
+Completeness:
+0.70 – 0.80 (faltam dados concretos do bug)
+
+Acceptance Criteria:
+0.75 – 0.85 (critérios pouco testáveis)
+
+Isso não indica erro do modelo.
+Indica que o prompt está ensinando respostas genéricas.
+
+--------------------------------------------------------
+7. CORREÇÃO RECOMENDADA PARA O EXEMPLO DO DASHBOARD
+--------------------------------------------------------
+
+Versão melhorada:
+
+Critérios de Aceitação:
+
+- Dado que acesso o dashboard como administrador
+  Quando o sistema calcula o total de usuários ativos
+  Então o dashboard deve mostrar exatamente 42 usuários ativos
+
+- Dado que existem 42 usuários ativos no banco
+  Quando visualizo a lista de usuários
+  Então a lista deve conter exatamente 42 usuários
+
+- Dado que o dashboard mostra 50 usuários
+  Quando a lista mostra apenas 42
+  Então o sistema deve registrar inconsistência de dados
+
+- Dado que novos usuários são ativados ou desativados
+  Quando o dashboard é atualizado
+  Então a contagem deve refletir o valor real em tempo real
+
+- Dado que comparo dashboard e lista de usuários
+  Quando ambas são carregadas
+  Então os valores devem ser idênticos
+
+Benefícios:
+
+• critérios testáveis
+• dados do bug preservados
+• cenário reproduzível
+
+--------------------------------------------------------
+8. REGRA CRÍTICA A SER ADICIONADA AO PROMPT
+--------------------------------------------------------
+
+Adicionar a seguinte regra:
+
+CRITICAL RULE:
+
+Acceptance Criteria MUST reference specific data from
+the bug report whenever available, including:
+
+- IDs
+- números
+- métricas
+- endpoints
+- tempos
+- quantidades
+
+Generic acceptance criteria such as:
+
+"system should work correctly"
+or
+"data should be accurate"
+
+must NOT be generated.
+
+--------------------------------------------------------
+9. MELHORIA NO PROCESSO DE RACIOCÍNIO
+--------------------------------------------------------
+
+Adicionar etapa interna antes da resposta:
+
+Antes de gerar a User Story, identificar internamente:
+
+Persona afetada
+Ação desejada
+Benefício de negócio
+Dados específicos do bug
+Tipo de complexidade
+
+Essas informações NÃO precisam aparecer
+na saída final, mas ajudam o modelo
+a estruturar melhor a resposta.
+
+--------------------------------------------------------
+10. RESUMO DAS MELHORIAS
+--------------------------------------------------------
+
+Melhorias principais:
+
+1) Corrigir exemplos para incluir dados reais do bug
+2) Reestruturar critérios Given-When-Then
+3) Garantir critérios independentes
+4) Proibir critérios genéricos
+5) Preservar IDs e números nos critérios
+6) Melhorar uso de Chain of Thought interno
+
+Resultado esperado:
+
+• respostas menos genéricas
+• critérios mais testáveis
+• melhor pontuação em evaluation
+• maior utilidade para times de produto e QA
+
+========================================================
+FIM DO DOCUMENTO
+========================================================
